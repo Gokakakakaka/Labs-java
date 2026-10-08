@@ -1,0 +1,7 @@
+spring:
+  application:
+    name: 123456
+
+application:
+  message: "Main application configuration"
+  version: "1.0"
