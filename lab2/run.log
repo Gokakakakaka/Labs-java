@@ -1,0 +1,77 @@
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] --------------------< com.example:spring-boot-task >--------------------
+[INFO] Building spring-boot-task 0.0.1-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] >>> spring-boot:3.5.5:run (default-cli) > test-compile @ spring-boot-task >>>
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ spring-boot-task ---
+[INFO] skip non existing resourceDirectory /home/goka/documents/it/Labs-java/lab2/src/main/resources
+[INFO] skip non existing resourceDirectory /home/goka/documents/it/Labs-java/lab2/src/main/resources
+[INFO] 
+[INFO] --- compiler:3.14.0:compile (default-compile) @ spring-boot-task ---
+[INFO] Recompiling the module because of changed source code.
+[INFO] Compiling 11 source files with javac [debug parameters release 17] to target/classes
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ spring-boot-task ---
+[INFO] skip non existing resourceDirectory /home/goka/documents/it/Labs-java/lab2/src/test/resources
+[INFO] 
+[INFO] --- compiler:3.14.0:testCompile (default-testCompile) @ spring-boot-task ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 1 source file with javac [debug parameters release 17] to target/test-classes
+[INFO] 
+[INFO] <<< spring-boot:3.5.5:run (default-cli) < test-compile @ spring-boot-task <<<
+[INFO] 
+[INFO] 
+[INFO] --- spring-boot:3.5.5:run (default-cli) @ spring-boot-task ---
+[INFO] Attaching agents: []
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v3.5.5)
+
+2026-10-14T22:23:29.993+03:00  INFO 36457 --- [           main] com.example.demo.DemoApplication         : Starting DemoApplication using Java 26.0.2.1 with PID 36457 (/home/goka/documents/it/Labs-java/lab2/target/classes started by goka in /home/goka/documents/it/Labs-java/lab2)
+2026-10-14T22:23:29.994+03:00  INFO 36457 --- [           main] com.example.demo.DemoApplication         : No active profile set, falling back to 1 default profile: "default"
+2026-10-14T22:23:30.311+03:00  INFO 36457 --- [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port 8080 (http)
+2026-10-14T22:23:30.318+03:00  INFO 36457 --- [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-10-14T22:23:30.318+03:00  INFO 36457 --- [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/10.1.44]
+2026-10-14T22:23:30.334+03:00  INFO 36457 --- [           main] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring embedded WebApplicationContext
+2026-10-14T22:23:30.334+03:00  INFO 36457 --- [           main] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 319 ms
+2026-10-14T22:23:30.465+03:00  WARN 36457 --- [           main] ConfigServletWebServerApplicationContext : Exception encountered during context initialization - cancelling refresh attempt: org.springframework.context.ApplicationContextException: Failed to start bean 'webServerStartStop'
+2026-10-14T22:23:30.474+03:00  INFO 36457 --- [           main] .s.b.a.l.ConditionEvaluationReportLogger : 
+
+Error starting ApplicationContext. To display the condition evaluation report re-run your application with 'debug' enabled.
+2026-10-14T22:23:30.482+03:00 ERROR 36457 --- [           main] o.s.b.d.LoggingFailureAnalysisReporter   : 
+
+***************************
+APPLICATION FAILED TO START
+***************************
+
+Description:
+
+Web server failed to start. Port 8080 was already in use.
+
+Action:
+
+Identify and stop the process that's listening on port 8080 or configure this application to listen on another port.
+
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  1.737 s
+[INFO] Finished at: 2026-10-14T22:23:30+03:00
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.springframework.boot:spring-boot-maven-plugin:3.5.5:run (default-cli) on project spring-boot-task: Process terminated with exit code: 1 -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoExecutionException
