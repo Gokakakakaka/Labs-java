@@ -1,0 +1,7 @@
+spring:
+  application:
+    name: 1БАС24022
+
+application:
+  message: "Main application configuration"
+  version: "1.0"
