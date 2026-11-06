@@ -1,0 +1,12 @@
+/home/goka/documents/it/Labs-java/test/lab2/src/main/java/com/example/demo/DemoApplication.java
+/home/goka/documents/it/Labs-java/test/lab2/src/main/java/com/example/demo/config/SecurityConfig.java
+/home/goka/documents/it/Labs-java/test/lab2/src/main/java/com/example/demo/controller/Controller.java
+/home/goka/documents/it/Labs-java/test/lab2/src/main/java/com/example/demo/db/Birds.java
+/home/goka/documents/it/Labs-java/test/lab2/src/main/java/com/example/demo/db/BusinessOperations.java
+/home/goka/documents/it/Labs-java/test/lab2/src/main/java/com/example/demo/db/Database.java
+/home/goka/documents/it/Labs-java/test/lab2/src/main/java/com/example/demo/db/Deals.java
+/home/goka/documents/it/Labs-java/test/lab2/src/main/java/com/example/demo/db/Item.java
+/home/goka/documents/it/Labs-java/test/lab2/src/main/java/com/example/demo/db/Lots.java
+/home/goka/documents/it/Labs-java/test/lab2/src/main/java/com/example/demo/db/Users.java
+/home/goka/documents/it/Labs-java/test/lab2/src/main/java/com/example/demo/security/CustomUserDetails.java
+/home/goka/documents/it/Labs-java/test/lab2/src/main/java/com/example/demo/security/CustomUserDetailsService.java

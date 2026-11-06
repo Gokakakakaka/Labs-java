@@ -1,0 +1,66 @@
+-- MySQL 8.0+ / MariaDB 10.6+. Run as a database administrator.
+CREATE DATABASE IF NOT EXISTS java_app CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE java_app;
+
+CREATE TABLE IF NOT EXISTS users (
+  id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(100) NOT NULL,
+  email VARCHAR(190) NOT NULL UNIQUE,
+  password_hash VARCHAR(100) NULL,
+  role VARCHAR(20) NOT NULL DEFAULT 'USER',
+  enabled BOOLEAN NOT NULL DEFAULT TRUE,
+  account_non_locked BOOLEAN NOT NULL DEFAULT TRUE,
+  CONSTRAINT chk_users_role CHECK (role IN ('USER','ADMIN'))
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS items (
+  id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  user_id BIGINT NOT NULL,
+  about VARCHAR(500) NOT NULL,
+  cndn VARCHAR(100) NOT NULL,
+  CONSTRAINT fk_items_user FOREIGN KEY (user_id) REFERENCES users(id)
+    ON UPDATE CASCADE ON DELETE RESTRICT
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS lots (
+  id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  item_id BIGINT NOT NULL UNIQUE,
+  pprice BIGINT NOT NULL,
+  start_price BIGINT NOT NULL DEFAULT 0,
+  step VARCHAR(50) NOT NULL,
+  `date` DATE NOT NULL,
+  status VARCHAR(20) NOT NULL DEFAULT 'OPEN',
+  CONSTRAINT chk_lots_price CHECK (pprice >= 0 AND start_price >= 0),
+  CONSTRAINT chk_lots_status CHECK (status IN ('OPEN','CLOSED','CANCELLED')),
+  CONSTRAINT fk_lots_item FOREIGN KEY (item_id) REFERENCES items(id)
+    ON UPDATE CASCADE ON DELETE RESTRICT
+) ENGINE=InnoDB;
+
+-- The original project calls bids "birds". Keep that table name to remain API-compatible.
+CREATE TABLE IF NOT EXISTS birds (
+  id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  lot_id BIGINT NOT NULL,
+  user_id BIGINT NOT NULL,
+  price BIGINT NOT NULL,
+  `date` DATE NOT NULL,
+  CONSTRAINT chk_birds_price CHECK (price > 0),
+  CONSTRAINT fk_birds_lot FOREIGN KEY (lot_id) REFERENCES lots(id)
+    ON UPDATE CASCADE ON DELETE RESTRICT,
+  CONSTRAINT fk_birds_user FOREIGN KEY (user_id) REFERENCES users(id)
+    ON UPDATE CASCADE ON DELETE RESTRICT,
+  INDEX idx_birds_lot_price (lot_id, price)
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS deals (
+  id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  lot_id BIGINT NOT NULL,
+  bird_id BIGINT NOT NULL UNIQUE,
+  price BIGINT NOT NULL,
+  status VARCHAR(20) NOT NULL DEFAULT 'COMPLETED',
+  CONSTRAINT chk_deals_price CHECK (price > 0),
+  CONSTRAINT chk_deals_status CHECK (status IN ('PENDING','COMPLETED','CANCELLED')),
+  CONSTRAINT fk_deals_lot FOREIGN KEY (lot_id) REFERENCES lots(id)
+    ON UPDATE CASCADE ON DELETE RESTRICT,
+  CONSTRAINT fk_deals_bid FOREIGN KEY (bird_id) REFERENCES birds(id)
+    ON UPDATE CASCADE ON DELETE RESTRICT
+) ENGINE=InnoDB;
