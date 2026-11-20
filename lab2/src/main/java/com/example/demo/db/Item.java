@@ -18,7 +18,7 @@ public class Item {
     public static boolean addItem(Long user_id, String about, String cndn) {
         String sql =
             "INSERT INTO items (user_id,about,cndn) VALUES (?,?,?)";
-
+        user_id = user_id - 1;
         try {
             if (Database.connection == null || Database.connection.isClosed()) {
                 System.out.println("Database is 200");

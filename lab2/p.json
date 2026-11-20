@@ -1,0 +1,380 @@
+{
+  "info": {
+    "name": "Auction API",
+    "description": "CRUD requests for Users, Items, Lots, Birds and Deals",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "id",
+      "value": "1"
+    }
+  ],
+  "item": [
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "GET All Users",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/users"
+          }
+        },
+        {
+          "name": "GET User By ID",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/users/{{id}}"
+          }
+        },
+        {
+          "name": "POST Create User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\":\"Test User\",\"email\":\"test@example.com\"}"
+            },
+            "url": "{{baseUrl}}/users"
+          }
+        },
+        {
+          "name": "PATCH Update User",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\":\"Updated User\",\"email\":\"updated@example.com\"}"
+            },
+            "url": "{{baseUrl}}/users/{{id}}"
+          }
+        },
+        {
+          "name": "DELETE User",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/users/{{id}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Items",
+      "item": [
+        {
+          "name": "GET All Items",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/items"
+          }
+        },
+        {
+          "name": "GET Item By ID",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/items/{{id}}"
+          }
+        },
+        {
+          "name": "POST Create Item",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"user_id\":\"1\",\"about\":\"Test item\",\"cndn\":\"Good\"}"
+            },
+            "url": "{{baseUrl}}/items"
+          }
+        },
+        {
+          "name": "PATCH Update Item",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"user_id\":\"1\",\"about\":\"Updated item\",\"cndn\":\"Excellent\"}"
+            },
+            "url": "{{baseUrl}}/items/{{id}}"
+          }
+        },
+        {
+          "name": "DELETE Item",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/items/{{id}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Lots",
+      "item": [
+        {
+          "name": "GET All Lots",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/lots"
+          }
+        },
+        {
+          "name": "GET Lot By ID",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/lots/{{id}}"
+          }
+        },
+        {
+          "name": "POST Create Lot",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"item_id\":\"1\",\"price\":\"1000\",\"step\":\"100\",\"date\":\"2026-12-01\",\"status\":\"active\"}"
+            },
+            "url": "{{baseUrl}}/lots"
+          }
+        },
+        {
+          "name": "PATCH Update Lot",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"item_id\":\"1\",\"price\":\"1500\",\"step\":\"200\",\"date\":\"2026-12-02\",\"status\":\"updated\"}"
+            },
+            "url": "{{baseUrl}}/lots/{{id}}"
+          }
+        },
+        {
+          "name": "DELETE Lot",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/lots/{{id}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Birds",
+      "item": [
+        {
+          "name": "GET All Birds",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/birds"
+          }
+        },
+        {
+          "name": "GET Bird By ID",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/birds/{{id}}"
+          }
+        },
+        {
+          "name": "POST Create Bird",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"lot_id\":\"1\",\"user_id\":\"1\",\"price\":\"1200\",\"date\":\"2026-12-01\"}"
+            },
+            "url": "{{baseUrl}}/birds"
+          }
+        },
+        {
+          "name": "PATCH Update Bird",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"lot_id\":\"1\",\"user_id\":\"1\",\"price\":\"1300\",\"date\":\"2026-12-02\"}"
+            },
+            "url": "{{baseUrl}}/birds/{{id}}"
+          }
+        },
+        {
+          "name": "DELETE Bird",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/birds/{{id}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Deals",
+      "item": [
+        {
+          "name": "GET All Deals",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/deals"
+          }
+        },
+        {
+          "name": "GET Deal By ID",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/deals/{{id}}"
+          }
+        },
+        {
+          "name": "POST Create Deal",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"lot_id\":\"1\",\"bird_id\":\"1\",\"price\":\"1300\",\"status\":\"completed\"}"
+            },
+            "url": "{{baseUrl}}/deals"
+          }
+        },
+        {
+          "name": "PATCH Update Deal",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"lot_id\":\"1\",\"bird_id\":\"1\",\"price\":\"1500\",\"status\":\"updated\"}"
+            },
+            "url": "{{baseUrl}}/deals/{{id}}"
+          }
+        },
+        {
+          "name": "DELETE Deal",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/deals/{{id}}"
+          }
+        }
+
+  {
+          "name": "Business Operations",
+          "item": [
+            {
+              "name": "Publish Item",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"user_id\": \"1\",\n  \"about\": \"Gaming laptop\",\n  \"cndn\": \"New\",\n  \"starting_price\": \"50000\",\n  \"step\": \"1000\",\n  \"date\": \"2026-12-01\"\n}"
+                },
+                "url": "{{baseUrl}}/business/publish-item"
+              }
+            },
+            {
+              "name": "Place Bid",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"user_id\": \"2\",\n  \"price\": \"51000\",\n  \"date\": \"2026-11-07\"\n}"
+                },
+                "url": "{{baseUrl}}/business/lots/{{lotId}}/bids"
+              }
+            },
+            {
+              "name": "Close Auction",
+              "request": {
+                "method": "POST",
+                "url": "{{baseUrl}}/business/lots/{{lotId}}/close"
+              }
+            },
+            {
+              "name": "Cancel Auction",
+              "request": {
+                "method": "POST",
+                "url": "{{baseUrl}}/business/lots/{{lotId}}/cancel"
+              }
+            },
+            {
+              "name": "Withdraw Bid",
+              "request": {
+                "method": "DELETE",
+                "url": "{{baseUrl}}/business/bids/{{bidId}}"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

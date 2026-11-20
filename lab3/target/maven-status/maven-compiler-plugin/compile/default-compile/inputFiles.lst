@@ -1,8 +1,9 @@
 /home/goka/documents/it/Labs-java/lab3/src/main/java/com/example/demo/DemoApplication.java
 /home/goka/documents/it/Labs-java/lab3/src/main/java/com/example/demo/controller/Controller.java
+/home/goka/documents/it/Labs-java/lab3/src/main/java/com/example/demo/db/ApiResponse.java
 /home/goka/documents/it/Labs-java/lab3/src/main/java/com/example/demo/db/Birds.java
 /home/goka/documents/it/Labs-java/lab3/src/main/java/com/example/demo/db/BusinessOperations.java
-/home/goka/documents/it/Labs-java/lab3/src/main/java/com/example/demo/db/Database.java
+/home/goka/documents/it/Labs-java/lab3/src/main/java/com/example/demo/db/Db.java
 /home/goka/documents/it/Labs-java/lab3/src/main/java/com/example/demo/db/Deals.java
 /home/goka/documents/it/Labs-java/lab3/src/main/java/com/example/demo/db/Item.java
 /home/goka/documents/it/Labs-java/lab3/src/main/java/com/example/demo/db/Lots.java

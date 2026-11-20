@@ -1,180 +1,224 @@
 package com.example.demo.db;
 
-import com.example.demo.db.Database;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.util.Properties;
-import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.List;
-import java.sql.ResultSet;
-
-
+import java.sql.*;
+import java.util.*;
 
 public class Birds {
-    public static boolean addBirds(Long lot_id, Long user_id, Long price, String date) {
-        String sql =
-            "INSERT INTO birds (lot_id,user_id,price,date) VALUES (?,?,?,?)";
 
+    public static Map<String, Object> addBirds(
+            Long lotId, Long userId, Long price, String date) {
         try {
-            if (Database.connection == null || Database.connection.isClosed()) {
-                System.out.println("Database is 200");
-                return false;
+            return addBird(Db.connection(), lotId, userId, price, date);
+        } catch (SQLException e) {
+            return ApiResponse.error("Ошибка добавления ставки: " + e.getMessage());
+        }
+    }
+
+    static Map<String, Object> addBird(
+            Connection c, long lotId, long userId, long price, String date)
+            throws SQLException {
+        String sql = "INSERT INTO birds(lot_id,user_id,price,date) VALUES(?,?,?,?)";
+        try (PreparedStatement ps =
+                     c.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+            ps.setLong(1, lotId);
+            ps.setLong(2, userId);
+            ps.setLong(3, price);
+            ps.setString(4, date);
+
+            ps.executeUpdate();
+            try (ResultSet keys = ps.getGeneratedKeys()) {
+
+                if (!keys.next()) {
+                    return ApiResponse.error("Ставка добавлена, но ID не получен");
+                }
+
+                Map<String, Object> data = new LinkedHashMap<>();
+                data.put("lot_id", lotId);
+                data.put("user_id", userId);
+                data.put("price", price);
+                data.put("date", date);
+
+                return ApiResponse.created("Ставка", keys.getLong(1), data);
+            }
+        }
+    }
+
+    static Map<String, Object> find(
+            Connection c, long id, boolean lock) throws SQLException {
+        String sql = "SELECT id,lot_id,user_id,price,date FROM birds WHERE id=?"
+                + (lock ? " FOR UPDATE" : "");
+        try (PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setLong(1, id);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) {
+                    return null;
+                }
+                Map<String, Object> data = new LinkedHashMap<>();
+
+                for (String column : new String[]{
+                        "id", "lot_id", "user_id", "price", "date"
+                }) {
+                    data.put(column, rs.getObject(column));
+                }
+                return data;
+            }
+        }
+    }
+
+    static Map<String, Object> highestBird(
+            Connection c, long lotId) throws SQLException {
+        String sql = "SELECT id,lot_id,user_id,price,date FROM birds "
+                + "WHERE lot_id=? ORDER BY price DESC,id ASC LIMIT 1";
+        try (PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setLong(1, lotId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) {
+                    return null;
+                }
+                Map<String, Object> data = new LinkedHashMap<>();
+
+                for (String column : new String[]{
+                        "id", "lot_id", "user_id", "price", "date"
+                }) {
+                    data.put(column, rs.getObject(column));
+                }
+                return data;
+            }
+        }
+    }
+
+    static boolean hasBids(Connection c, long lotId) throws SQLException {
+        String sql = "SELECT 1 FROM birds WHERE lot_id=? LIMIT 1";
+        try (PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setLong(1, lotId);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next();
+            }
+        }
+    }
+
+    static long maxPrice(
+            Connection c, long lotId, long fallback) throws SQLException {
+        String sql = "SELECT MAX(price) FROM birds WHERE lot_id=?";
+        try (PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setLong(1, lotId);
+            try (ResultSet rs = ps.executeQuery()) {
+                rs.next();
+                long price = rs.getLong(1);
+                return rs.wasNull() ? fallback : price;
+            }
+        }
+    }
+
+    static void delete(Connection c, long id) throws SQLException {
+        String sql = "DELETE FROM birds WHERE id=?";
+        try (PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setLong(1, id);
+            ps.executeUpdate();
+        }
+    }
+
+    public static Map<String, Object> updateBirds(
+            Long id, Long lotId, Long userId, Long price, String date) {
+        if (id == null) {
+            return ApiResponse.error("ID ставки не может быть пустым");
+        }
+        String sql = "UPDATE birds SET lot_id=?,user_id=?,price=?,date=? WHERE id=?";
+        try (Connection c = Db.connection();
+             PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setObject(1, lotId);
+            ps.setObject(2, userId);
+            ps.setObject(3, price);
+            ps.setString(4, date);
+            ps.setLong(5, id);
+
+            int affectedRows = ps.executeUpdate();
+
+            if (affectedRows == 0) {
+                return ApiResponse.error("Ставка с ID " + id + " не найдена");
             }
 
-            try (PreparedStatement statement =
-                     Database.connection.prepareStatement(sql)) {
-                statement.setLong(1, lot_id);
-                statement.setLong(2, user_id);
-                statement.setLong(3, price);
-                statement.setString(4, date);
+            Map<String, Object> data = new LinkedHashMap<>();
+            data.put("id", id);
+            data.put("lot_id", lotId);
+            data.put("user_id", userId);
+            data.put("price", price);
+            data.put("date", date);
 
-                return statement.executeUpdate() > 0;
-            }
+            return ApiResponse.success("Ставка успешно обновлена", data);
 
         } catch (SQLException e) {
-            System.err.println(
-                "Error adding lot: " + e.getMessage()
-            );
-            return false;
+            return ApiResponse.error("Ошибка обновления ставки: " + e.getMessage());
         }
     }
 
-    public static boolean updateBirds(Long id,Long lot_id, Long user_id, Long price, String date) {
-      String sql = 
-        "UPDATE birds SET lot_id=?,user_id=?,price=?,date=?  WHERE id = ?";
+    public static Map<String, Object> getBirds(Long id) {
 
-      try {
-          if (Database.connection == null || Database.connection.isClosed()) {
-             System.out.println("Database is 200");
-              return false;
-          }
+        if (id == null) {
+            return ApiResponse.error("ID ставки не может быть пустым");
+        }
 
-          try (PreparedStatement statement =
-                   Database.connection.prepareStatement(sql)) {
-              statement.setLong(1, lot_id);
-              statement.setLong(2, user_id);
-              statement.setLong(3, price);
-              statement.setString(4, date);
-              statement.setLong(5, id);
-              return statement.executeUpdate() > 0;
-          }
+        try (Connection c = Db.connection()) {
 
-      } catch (SQLException e) {
-          System.err.println(
-              "Error updating lot: " + e.getMessage()
-          );
-          return false;
+            Map<String, Object> data = find(c, id, false);
+
+            if (data == null) {
+                return ApiResponse.error("Ставка не найдена");
+            }
+
+            return ApiResponse.success("Ставка получена", data);
+
+        } catch (SQLException e) {
+            return ApiResponse.error("Ошибка получения данных ставки: " + e.getMessage());
         }
     }
 
-  public static String getBirds(Long id) {
-    String sql = 
-      "SELECT * FROM birds WHERE id = ?";
+    public static Map<String, Object> getBirds() {
 
-      try {
-        if (Database.connection == null ||
-                Database.connection.isClosed()) {
-            return null;
-        }
+        List<Map<String, Object>> out = new ArrayList<>();
 
-        try (PreparedStatement statement =
-                 Database.connection.prepareStatement(sql)) {
+        String sql = "SELECT id,lot_id,user_id,price,date FROM birds";
 
-            statement.setLong(1, id);
+        try (Connection c = Db.connection();
+             Statement s = c.createStatement();
+             ResultSet rs = s.executeQuery(sql)) {
 
-            try (ResultSet result = statement.executeQuery()) {
-                if (result.next()) {
-                    long Id = result.getLong("id");
-                    long lot_id = result.getLong("lot_id");
-                    long user_id = result.getLong("user_id");
-                    long price = result.getLong("price"); 
-                    String date = result.getString("date");
-                    return String.format(
-                        "{\"id\":%d,\"lot id\":%d,\"user id\":\"%d,\"price\":\"%d,\"date\":\"%s\"}",
-                        Id,lot_id,user_id,price,date
-                    );
+            while (rs.next()) {
+
+                Map<String, Object> data = new LinkedHashMap<>();
+
+                for (String column : new String[]{
+                        "id", "lot_id", "user_id", "price", "date"
+                }) {
+                    data.put(column, rs.getObject(column));
                 }
 
-                return null;
+                out.add(data);
             }
+
+            return ApiResponse.success("Данные ставок получены", out);
+
+        } catch (SQLException e) {
+            return ApiResponse.error(
+                    "Ошибка получения данных ставок: " + e.getMessage());
         }
+    }
 
-      } catch (SQLException e) {
-        System.err.println(
-            "Error getting lot: " + e.getMessage());
-        return null;
-      }
-  }
-
-  public static List getBirds() {
-
-    List<String> birds = new ArrayList<>();
-    String sql = 
-      "SELECT * FROM birds";
-
-      try {
-        if (Database.connection == null ||
-                Database.connection.isClosed()) {
-            return null;
+    public static Map<String, Object> removeBirds(Long id) {
+        if (id == null) {
+            return ApiResponse.error("ID ставки не может быть пустым");
         }
-
-        try (PreparedStatement statement =
-                 Database.connection.prepareStatement(sql)) {
-
-
-            try (ResultSet result = statement.executeQuery()) {
-                while (result.next()) {
-                    long Id = result.getLong("id");
-                    long lot_id = result.getLong("lot_id");
-                    long user_id = result.getLong("user_id");
-                    long price = result.getLong("price"); 
-                    String date = result.getString("date");
-                    String lot = String.format(
-                        "{\"id\":%d,\"lot id\":%d,\"user id\":\"%d,\"price\":\"%d,\"date\":\"%s\"}",
-                        Id,lot_id,user_id,price,date
-                    );
-                    
-                    birds.add(lot);
-
-                }
-
-                return birds;
+        String sql = "DELETE FROM birds WHERE id=?";
+        try (Connection c = Db.connection();
+             PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setLong(1, id);
+            boolean result = ps.executeUpdate() > 0;
+            if (result) {
+                return ApiResponse.success("Ставка удалена", id + " Deleted");
             }
+            return ApiResponse.error("Невозможно удалить ставку");
+        } catch (SQLException e) {
+            return ApiResponse.error("Ошибка удаления ставки: " + e.getMessage());
         }
-
-      } catch (SQLException e) {
-        System.err.println(
-            "Error getting user: " + e.getMessage());
-        return null;
-      }
-  }
-
-  public static boolean removeBirds(Long id){ 
-    String sql = 
-      "DELETE FROM birds WHERE id = ?";
-
-      try {
-        if (Database.connection == null ||
-                Database.connection.isClosed()) {
-            return false;
-        }
-
-        try (PreparedStatement statement =
-                 Database.connection.prepareStatement(sql)) {
-
-            statement.setLong(1, id);
-            return statement.executeUpdate() > 0;
-        }
-
-      } catch (SQLException e) {
-        System.err.println(
-            "Error getting lot: " + e.getMessage());
-        return false;
-      }
-  }
+    }
 }
-

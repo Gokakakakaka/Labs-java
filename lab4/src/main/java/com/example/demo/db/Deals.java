@@ -1,178 +1,193 @@
 package com.example.demo.db;
 
-import com.example.demo.db.Database;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.util.Properties;
-import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.List;
-import java.sql.ResultSet;
+import java.sql.*;
+import java.util.*;
 
 public class Deals {
 
-    public static boolean addDeals(
-            Long lot_id, Long bird_id, Long price, String status) {
-
-        String sql =
-            "INSERT INTO deals (lot_id, bird_id, price, status) VALUES (?, ?, ?, ?)";
+    public static Map<String, Object> addDeals(
+            Long lotId, Long birdId, Long price, String status) {
 
         try {
-            if (Database.connection == null ||
-                    Database.connection.isClosed()) {
-                System.out.println("Database is 200");
-                return false;
-            }
-
-            try (PreparedStatement statement =
-                     Database.connection.prepareStatement(sql)) {
-
-                statement.setLong(1, lot_id);
-                statement.setLong(2, bird_id);
-                statement.setLong(3, price);
-                statement.setString(4, status);
-
-                return statement.executeUpdate() > 0;
-            }
-
+            return addDeal(Db.connection(), lotId, birdId, price, status);
         } catch (SQLException e) {
-            System.err.println("Error adding deal: " + e.getMessage());
-            return false;
+            return ApiResponse.error("Ошибка добавления сделки: " + e.getMessage());
         }
     }
 
-    public static boolean updateDeals(
-            Long id, Long lot_id, Long bird_id,
-            Long price, String status) {
+    static Map<String, Object> addDeal(
+            Connection c, long lotId, long birdId, long price, String status)
+            throws SQLException {
 
-        String sql =
-            "UPDATE deals SET lot_id = ?, bird_id = ?, price = ?, status = ? WHERE id = ?";
+        String sql = "INSERT INTO deals(lot_id,bird_id,price,status) VALUES(?,?,?,?)";
 
-        try {
-            if (Database.connection == null ||
-                    Database.connection.isClosed()) {
-                System.out.println("Database is 200");
-                return false;
-            }
+        try (PreparedStatement ps =
+                     c.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
 
-            try (PreparedStatement statement =
-                     Database.connection.prepareStatement(sql)) {
+            ps.setLong(1, lotId);
+            ps.setLong(2, birdId);
+            ps.setLong(3, price);
+            ps.setString(4, status);
 
-                statement.setLong(1, lot_id);
-                statement.setLong(2, bird_id);
-                statement.setLong(3, price);
-                statement.setString(4, status);
-                statement.setLong(5, id);
+            ps.executeUpdate();
 
-                return statement.executeUpdate() > 0;
-            }
+            try (ResultSet keys = ps.getGeneratedKeys()) {
 
-        } catch (SQLException e) {
-            System.err.println("Error updating deal: " + e.getMessage());
-            return false;
-        }
-    }
-
-    public static String getDeals(Long id) {
-        String sql = "SELECT * FROM deals WHERE id = ?";
-
-        try {
-            if (Database.connection == null ||
-                    Database.connection.isClosed()) {
-                return null;
-            }
-
-            try (PreparedStatement statement =
-                     Database.connection.prepareStatement(sql)) {
-
-                statement.setLong(1, id);
-
-                try (ResultSet result = statement.executeQuery()) {
-                    if (result.next()) {
-                        long dealId = result.getLong("id");
-                        long lotId = result.getLong("lot_id");
-                        long birdId = result.getLong("bird_id");
-                        long price = result.getLong("price");
-                        String status = result.getString("status");
-
-                        return String.format(
-                            "{\"id\":%d,\"lot_id\":%d," +
-                            "\"bird_id\":%d,\"price\":%d,\"status\":\"%s\"}",
-                            dealId, lotId, birdId, price, status
-                        );
-                    }
-
-                    return null;
+                if (!keys.next()) {
+                    return ApiResponse.error("Сделка добавлена, но ID не получен");
                 }
-            }
 
-        } catch (SQLException e) {
-            System.err.println("Error getting deal: " + e.getMessage());
-            return null;
+                Map<String, Object> data = new LinkedHashMap<>();
+                data.put("lot_id", lotId);
+                data.put("bird_id", birdId);
+                data.put("price", price);
+                data.put("status", status);
+
+                return ApiResponse.created("Сделка", keys.getLong(1), data);
+            }
         }
     }
 
-    public static List<String> getDeals() {
-        List<String> deals = new ArrayList<>();
-        String sql = "SELECT * FROM deals";
+    static boolean existsForLot(Connection c, long lotId) throws SQLException {
 
-        try {
-            if (Database.connection == null ||
-                    Database.connection.isClosed()) {
-                return deals;
+        String sql = "SELECT 1 FROM deals WHERE lot_id=? LIMIT 1";
+
+        try (PreparedStatement ps = c.prepareStatement(sql)) {
+
+            ps.setLong(1, lotId);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next();
+            }
+        }
+    }
+
+    public static Map<String, Object> updateDeals(
+            Long id, Long lotId, Long birdId, Long price, String status) {
+
+        if (id == null) {
+            return ApiResponse.error("ID сделки не может быть пустым");
+        }
+
+        String sql = "UPDATE deals SET lot_id=?,bird_id=?,price=?,status=? WHERE id=?";
+
+        try (Connection c = Db.connection();
+             PreparedStatement ps = c.prepareStatement(sql)) {
+
+            ps.setObject(1, lotId);
+            ps.setObject(2, birdId);
+            ps.setObject(3, price);
+            ps.setString(4, status);
+            ps.setLong(5, id);
+
+            int affectedRows = ps.executeUpdate();
+
+            if (affectedRows == 0) {
+                return ApiResponse.error("Сделка с ID " + id + " не найдена");
             }
 
-            try (PreparedStatement statement =
-                     Database.connection.prepareStatement(sql);
-                 ResultSet result = statement.executeQuery()) {
+            Map<String, Object> data = new LinkedHashMap<>();
+            data.put("id", id);
+            data.put("lot_id", lotId);
+            data.put("bird_id", birdId);
+            data.put("price", price);
+            data.put("status", status);
 
-                while (result.next()) {
-                    long id = result.getLong("id");
-                    long lotId = result.getLong("lot_id");
-                    long birdId = result.getLong("bird_id");
-                    long price = result.getLong("price");
-                    String status = result.getString("status");
+            return ApiResponse.success("Сделка успешно обновлена", data);
 
-                    String deal = String.format(
-                        "{\"id\":%d,\"lot_id\":%d," +
-                        "\"bird_id\":%d,\"price\":%d,\"status\":\"%s\"}",
-                        id, lotId, birdId, price, status
-                    );
+        } catch (SQLException e) {
+            return ApiResponse.error("Ошибка обновления сделки: " + e.getMessage());
+        }
+    }
 
-                    deals.add(deal);
+    public static Map<String, Object> getDeals(Long id) {
+
+        if (id == null) {
+            return ApiResponse.error("ID сделки не может быть пустым");
+        }
+
+        String sql = "SELECT id,lot_id,bird_id,price,status FROM deals WHERE id=?";
+
+        try (Connection c = Db.connection();
+             PreparedStatement ps = c.prepareStatement(sql)) {
+
+            ps.setLong(1, id);
+
+            try (ResultSet rs = ps.executeQuery()) {
+
+                if (!rs.next()) {
+                    return ApiResponse.error("Сделка не найдена");
                 }
+
+                Map<String, Object> data = new LinkedHashMap<>();
+
+                for (String column : new String[]{
+                        "id", "lot_id", "bird_id", "price", "status"
+                }) {
+                    data.put(column, rs.getObject(column));
+                }
+
+                return ApiResponse.success("Сделка получена", data);
             }
 
-            return deals;
-
         } catch (SQLException e) {
-            System.err.println("Error getting deals: " + e.getMessage());
-            return deals;
+            return ApiResponse.error("Ошибка получения данных сделки: " + e.getMessage());
         }
     }
 
-    public static boolean removeDeals(Long id) {
-        String sql = "DELETE FROM deals WHERE id = ?";
+    public static Map<String, Object> getDeals() {
 
-        try {
-            if (Database.connection == null ||
-                    Database.connection.isClosed()) {
-                return false;
+        List<Map<String, Object>> out = new ArrayList<>();
+
+        String sql = "SELECT id,lot_id,bird_id,price,status FROM deals";
+
+        try (Connection c = Db.connection();
+             Statement s = c.createStatement();
+             ResultSet rs = s.executeQuery(sql)) {
+
+            while (rs.next()) {
+
+                Map<String, Object> data = new LinkedHashMap<>();
+
+                for (String column : new String[]{
+                        "id", "lot_id", "bird_id", "price", "status"
+                }) {
+                    data.put(column, rs.getObject(column));
+                }
+
+                out.add(data);
             }
 
-            try (PreparedStatement statement =
-                     Database.connection.prepareStatement(sql)) {
-
-                statement.setLong(1, id);
-                return statement.executeUpdate() > 0;
-            }
+            return ApiResponse.success("Данные сделок получены", out);
 
         } catch (SQLException e) {
-            System.err.println("Error removing deal: " + e.getMessage());
-            return false;
+            return ApiResponse.error("Ошибка получения данных сделок: " + e.getMessage());
+        }
+    }
+
+    public static Map<String, Object> removeDeals(Long id) {
+
+        if (id == null) {
+            return ApiResponse.error("ID сделки не может быть пустым");
+        }
+
+        String sql = "DELETE FROM deals WHERE id=?";
+
+        try (Connection c = Db.connection();
+             PreparedStatement ps = c.prepareStatement(sql)) {
+
+            ps.setLong(1, id);
+
+            boolean result = ps.executeUpdate() > 0;
+
+            if (result) {
+                return ApiResponse.success("Сделка удалена", id + " Deleted");
+            }
+
+            return ApiResponse.error("Невозможно удалить сделку");
+
+        } catch (SQLException e) {
+            return ApiResponse.error("Ошибка удаления сделки: " + e.getMessage());
         }
     }
 }

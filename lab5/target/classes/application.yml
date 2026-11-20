@@ -1,0 +1,25 @@
+spring:
+  application:
+    name: 1БАС24022
+
+  datasource:
+    url: jdbc:mysql://localhost:3306/java_app?useSSL=false&serverTimezone=UTC&characterEncoding=UTF-8
+    username: admin
+    password: 12345
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+
+application:
+  message: "Main application configuration"
+  version: "1.0"
+
+security:
+  jwt:
+    secret: ${JWT_SECRET:BM1pDpGIOvhSquYeMnX/HSaZujbNdF5Wa2Td5g9+sZacqroaVDKXJLfR+uVYiyYm}
+    access-ttl-seconds: ${JWT_ACCESS_TTL_SECONDS:900}
+    refresh-ttl-seconds: ${JWT_REFRESH_TTL_SECONDS:2592000}

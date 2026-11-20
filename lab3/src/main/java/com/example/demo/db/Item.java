@@ -1,183 +1,173 @@
 package com.example.demo.db;
 
-import com.example.demo.db.Database;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.util.Properties;
-import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.List;
-import java.sql.ResultSet;
-
-
+import java.sql.*;
+import java.util.*;
 
 public class Item {
-    public static boolean addItem(Long user_id, String about, String cndn) {
-        String sql =
-            "INSERT INTO items (user_id,about,cndn) VALUES (?,?,?)";
+
+    public static Map<String, Object> addItem(
+            Long userId, String about, String cndn) {
 
         try {
-            if (Database.connection == null || Database.connection.isClosed()) {
-                System.out.println("Database is 200");
-                return false;
+            return addItem(Db.connection(), userId, about, cndn);
+        } catch (SQLException e) {
+            return ApiResponse.error("Ошибка добавления товара: " + e.getMessage());
+        }
+    }
+
+    static Map<String, Object> addItem(
+            Connection c, long userId, String about, String cndn)
+            throws SQLException {
+
+        String sql = "INSERT INTO items(user_id,about,cndn) VALUES(?,?,?)";
+
+        try (PreparedStatement ps =
+                     c.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+
+            ps.setLong(1, userId);
+            ps.setString(2, about);
+            ps.setString(3, cndn);
+
+            ps.executeUpdate();
+
+            try (ResultSet keys = ps.getGeneratedKeys()) {
+
+                if (!keys.next()) {
+                    return ApiResponse.error("Товар добавлен, но ID не получен");
+                }
+
+                Map<String, Object> data = new LinkedHashMap<>();
+                data.put("user_id", userId);
+                data.put("about", about);
+                data.put("cndn", cndn);
+
+                return ApiResponse.created("Товар", keys.getLong(1), data);
             }
+        }
+    }
 
-            try (PreparedStatement statement =
-                     Database.connection.prepareStatement(sql)) {
+    public static Map<String, Object> getItem(Long id) {
 
-                statement.setLong(1, user_id);
-                statement.setString(2, about);
-                statement.setString(3, cndn);
+        if (id == null) {
+            return ApiResponse.error("ID товара не может быть пустым");
+        }
 
-                return statement.executeUpdate() > 0;
+        String sql = "SELECT id,user_id,about,cndn FROM items WHERE id=?";
+
+        try (Connection c = Db.connection();
+             PreparedStatement ps = c.prepareStatement(sql)) {
+
+            ps.setLong(1, id);
+
+            try (ResultSet rs = ps.executeQuery()) {
+
+                if (!rs.next()) {
+                    return ApiResponse.error("Товар не найден");
+                }
+
+                Map<String, Object> data = new LinkedHashMap<>();
+
+                data.put("id", rs.getLong("id"));
+                data.put("user_id", rs.getLong("user_id"));
+                data.put("about", rs.getString("about"));
+                data.put("cndn", rs.getString("cndn"));
+
+                return ApiResponse.success("Товар получен", data);
             }
 
         } catch (SQLException e) {
-            System.err.println(
-                "Error adding user: " + e.getMessage()
-            );
-            return false;
+            return ApiResponse.error("Ошибка получения данных товара: " + e.getMessage());
         }
     }
 
-    public static boolean updateItem(Long id, Long user_id, String about, String cndn) {
-      String sql = 
-        "UPDATE items SET user_id=?, about=?, cndn=?  WHERE id = ?";
+    public static Map<String, Object> getItem() {
 
-      try {
-          if (Database.connection == null || Database.connection.isClosed()) {
-             System.out.println("Database is 200");
-              return false;
-          }
+        List<Map<String, Object>> out = new ArrayList<>();
 
-          try (PreparedStatement statement =
-                   Database.connection.prepareStatement(sql)) {
-              statement.setLong(1, user_id);
-              statement.setString(2, about);
-              statement.setString(3, cndn);
-              statement.setLong(4, id);
-              return statement.executeUpdate() > 0;
-          }
+        String sql = "SELECT id,user_id,about,cndn FROM items";
 
-      } catch (SQLException e) {
-          System.err.println(
-              "Error updating item: " + e.getMessage()
-          );
-          return false;
+        try (Connection c = Db.connection();
+             Statement s = c.createStatement();
+             ResultSet rs = s.executeQuery(sql)) {
+
+            while (rs.next()) {
+
+                Map<String, Object> data = new LinkedHashMap<>();
+
+                data.put("id", rs.getLong("id"));
+                data.put("user_id", rs.getLong("user_id"));
+                data.put("about", rs.getString("about"));
+                data.put("cndn", rs.getString("cndn"));
+
+                out.add(data);
+            }
+
+            return ApiResponse.success("Данные товаров получены", out);
+
+        } catch (SQLException e) {
+            return ApiResponse.error("Ошибка получения данных товаров: " + e.getMessage());
         }
     }
 
-  public static String getItem(Long id) {
-    String sql = 
-      "SELECT * FROM items WHERE id = ?";
+    public static Map<String, Object> updateItem(
+            Long id, Long userId, String about, String cndn) {
 
-      try {
-        if (Database.connection == null ||
-                Database.connection.isClosed()) {
-            return null;
+        if (id == null) {
+            return ApiResponse.error("ID товара не может быть пустым");
         }
 
-        try (PreparedStatement statement =
-                 Database.connection.prepareStatement(sql)) {
+        String sql = "UPDATE items SET user_id=?,about=?,cndn=? WHERE id=?";
 
-            statement.setLong(1, id);
+        try (Connection c = Db.connection();
+             PreparedStatement ps = c.prepareStatement(sql)) {
 
-            try (ResultSet result = statement.executeQuery()) {
-                if (result.next()) {
-                    long Id = result.getLong("id");
-                    long userId = result.getLong("user_id");
-                    String about = result.getString("about");
-                    String cndn = result.getString("cndn");
+            ps.setObject(1, userId);
+            ps.setString(2, about);
+            ps.setString(3, cndn);
+            ps.setLong(4, id);
 
-                    return String.format(
-                        "{\"id\":%d,\"user id\":\"%d,\"about\":\"%s\",\"about\":\"%s\"}",
-                        Id,userId, about, cndn
-                    );
-                }
+            int affectedRows = ps.executeUpdate();
 
-                return null;
+            if (affectedRows == 0) {
+                return ApiResponse.error("Товар с ID " + id + " не найден");
             }
+
+            Map<String, Object> data = new LinkedHashMap<>();
+            data.put("id", id);
+            data.put("user_id", userId);
+            data.put("about", about);
+            data.put("cndn", cndn);
+
+            return ApiResponse.success("Товар успешно обновлен", data);
+
+        } catch (SQLException e) {
+            return ApiResponse.error("Ошибка обновления товара: " + e.getMessage());
+        }
+    }
+
+    public static Map<String, Object> removeItem(Long id) {
+
+        if (id == null) {
+            return ApiResponse.error("ID товара не может быть пустым");
         }
 
-      } catch (SQLException e) {
-        System.err.println(
-            "Error getting user: " + e.getMessage());
-        return null;
-      }
-  }
+        String sql = "DELETE FROM items WHERE id=?";
 
-  public static List getItem() {
+        try (Connection c = Db.connection();
+             PreparedStatement ps = c.prepareStatement(sql)) {
 
-    List<String> items = new ArrayList<>();
-    String sql = 
-      "SELECT * FROM items";
+            ps.setLong(1, id);
 
-      try {
-        if (Database.connection == null ||
-                Database.connection.isClosed()) {
-            return null;
-        }
+            boolean result = ps.executeUpdate() > 0;
 
-        try (PreparedStatement statement =
-                 Database.connection.prepareStatement(sql)) {
-
-
-            try (ResultSet result = statement.executeQuery()) {
-                while (result.next()) {
-                    long Id = result.getLong("id");
-                    long userId = result.getLong("user_id");
-                    String about = result.getString("about");
-                    String cndn = result.getString("cndn");
-
-                    String user = String.format(
-                        "{\"id\":%d,\"user id\":\"%d,\"about\":\"%s\",\"about\":\"%s\"}",
-                        Id,userId, about, cndn
-                    );
-                    
-                    items.add(user);
-
-                }
-
-                return items;
+            if (result) {
+                return ApiResponse.success("Товар удален", id + " Deleted");
             }
+
+            return ApiResponse.error("Невозможно удалить товар");
+
+        } catch (SQLException e) {
+            return ApiResponse.error("Ошибка удаления товара: " + e.getMessage());
         }
-
-      } catch (SQLException e) {
-        System.err.println(
-            "Error getting user: " + e.getMessage());
-        return null;
-      }
-  }
-
-  public static boolean removeItem(Long id){ 
-    String sql = 
-      "DELETE FROM items WHERE id = ?";
-
-      try {
-        if (Database.connection == null ||
-                Database.connection.isClosed()) {
-            return false;
-        }
-
-        try (PreparedStatement statement =
-                 Database.connection.prepareStatement(sql)) {
-
-            statement.setLong(1, id);
-            return statement.executeUpdate() > 0;
-        }
-
-      } catch (SQLException e) {
-        System.err.println(
-            "Error getting user: " + e.getMessage());
-        return false;
-      }
-
-  }
-
-
-
+    }
 }
-

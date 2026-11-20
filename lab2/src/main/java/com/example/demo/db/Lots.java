@@ -62,6 +62,7 @@ public class Lots {
               statement.setString(3, step);
               statement.setString(4, date);
               statement.setString(5, status);
+              statement.setLong(6, id);
 
               return statement.executeUpdate() > 0;
           }

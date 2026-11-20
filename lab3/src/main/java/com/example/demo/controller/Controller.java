@@ -15,98 +15,76 @@ public class Controller {
 
 //-----------USERS--------------
   @GetMapping("/users/{id}")
-  public String getUser(@PathVariable Long id){
+  public Map<String, Object> getUser(@PathVariable Long id){
     return Users.getUser(id);
   }
   @GetMapping("/users")
-  public List getUsers(){
+  public Map<String, Object> getUsers(){
     return Users.getUser();
   }
   @PostMapping("/users")
-  public String addUser(@RequestBody Map<String, String> data) {
-    boolean added = Users.addUser(
-        data.get("name"),
-        data.get("email")
-    );
-
-    return added ? "Yes" : "No";
+  public Object addUser(@RequestBody Map<String, String> data) {
+    return Users.addUser(data.get("name"), data.get("email"));
   }
   @PatchMapping("/users/{id}")
-  public String updateUser(@PathVariable Long id, @RequestBody Map<String,String> data) {
-    boolean added = Users.updateUser(
+  public Map<String, Object> updateUser(@PathVariable Long id, @RequestBody Map<String,String> data) {
+    return Users.updateUser(
         id,
         data.get("name"),
         data.get("email")
     );
-
-    return added ? "Yes" : "No";
   }
   @DeleteMapping("/users/{id}")
-  public String removeUser(@PathVariable Long id) {
-    boolean added = Users.removeUser(id);
-    return added ? "Yes" : "No";
+  public Map<String, Object> removeUser(@PathVariable Long id) {
+    return Users.removeUser(id);
   }
 
 
 //-----------ITEMS--------------
   @GetMapping("/items/{id}")
-  public String getItem(@PathVariable Long id){
+  public Map<String, Object> getItem(@PathVariable Long id){
     return Item.getItem(id);
   }
   @GetMapping("/items")
-  public List getItem(){
+  public Map<String, Object> getItem(){
     return Item.getItem();
   }
   @PostMapping("/items")
-  public String addItem(@RequestBody Map<String, String> data){
-    boolean added = Item.addItem(
-        Long.parseLong(data.get("user_id")),
-        data.get("about"),
-        data.get("cndn")
-        );
-    return added ? "Yes" : "No";
+  public Object addItem(@RequestBody Map<String, String> data){
+    return Item.addItem(Long.parseLong(data.get("user_id")), data.get("about"), data.get("cndn"));
   }
   @PatchMapping("/items/{id}")
-  public String updateItem(@PathVariable Long id, @RequestBody Map<String,String> data) {
-    boolean added = Item.updateItem(
+  public Map<String, Object> updateItem(@PathVariable Long id, @RequestBody Map<String,String> data) {
+    return Item.updateItem(
         id,
         Long.parseLong(data.get("user_id")),
         data.get("about"),
         data.get("cndn")
     );
-
-    return added ? "Yes" : "No";
   }
   @DeleteMapping("/items/{id}")
-  public String removeItem(@PathVariable Long id) {
-    boolean added = Item.removeItem(id);
-    return added ? "Yes" : "No";
+  public  Map<String, Object> removeItem(@PathVariable Long id) {
+    return Item.removeItem(id);
   }
 
 
 //-----------LOTS--------------
   @GetMapping("/lots/{id}")
-  public String getLots(@PathVariable Long id){
+  public Map<String, Object> getLots(@PathVariable Long id){
     return Lots.getLots(id);
   }
   @GetMapping("/lots")
-  public List getLots(){
+  public Map<String, Object> getLots(){
     return Lots.getLots();
   }
   @PostMapping("/lots")
-  public String addLots(@RequestBody Map<String, String> data){
-    boolean added = Lots.addLots(
-        Long.parseLong(data.get("item_id")),
-        Long.parseLong(data.get("price")),
-        data.get("step"),
-        data.get("date"),
-        data.get("status")
-        );
-    return added ? "Yes" : "No";
+  public Object addLots(@RequestBody Map<String, String> data){
+    return Lots.addLots(Long.parseLong(data.get("item_id")), Long.parseLong(data.get("price")),
+        data.get("step"), data.get("date"), data.get("status"));
   }
   @PatchMapping("/lots/{id}")
-  public String updateLots(@PathVariable Long id, @RequestBody Map<String,String> data) {
-    boolean added = Lots.updateLots(
+  public Map<String, Object> updateLots(@PathVariable Long id, @RequestBody Map<String,String> data) {
+    return Lots.updateLots(
         id,
         Long.parseLong(data.get("item_id")),
         Long.parseLong(data.get("price")),
@@ -114,115 +92,96 @@ public class Controller {
         data.get("date"),
         data.get("status")
     );
-
-    return added ? "Yes" : "No";
   }
   @DeleteMapping("/lots/{id}")
-  public String removeLots(@PathVariable Long id) {
-    boolean added = Lots.removeLots(id);
-    return added ? "Yes" : "No";
+  public Map<String, Object> removeLots(@PathVariable Long id) {
+    return Lots.removeLots(id);
   }
   //-----------BIRDS--------------
   @GetMapping("/birds/{id}")
-  public String getbirds(@PathVariable Long id){
+  public Map<String, Object> getbirds(@PathVariable Long id){
     return Birds.getBirds(id);
   }
   @GetMapping("/birds")
-  public List getbirds(){
+  public Map<String, Object> getbirds(){
     return Birds.getBirds();
   }
   @PostMapping("/birds")
-  public String addbirds(@RequestBody Map<String, String> data){
-    boolean added = Birds.addBirds(
-        Long.parseLong(data.get("lot_id")),
-        Long.parseLong(data.get("user_id")),
-        Long.parseLong(data.get("price")),
-        data.get("date")
-        );
-    return added ? "Yes" : "No";
+  public Object addbirds(@RequestBody Map<String, String> data){
+    return Birds.addBirds(Long.parseLong(data.get("lot_id")), Long.parseLong(data.get("user_id")),
+        Long.parseLong(data.get("price")), data.get("date"));
   }
   @PatchMapping("/birds/{id}")
-  public String updatebirds(@PathVariable Long id, @RequestBody Map<String,String> data) {
-    boolean added = Birds.updateBirds(
+  public Map<String, Object> updatebirds(@PathVariable Long id, @RequestBody Map<String,String> data) {
+    return Birds.updateBirds(
         id,
         Long.parseLong(data.get("lot_id")),
         Long.parseLong(data.get("user_id")),
         Long.parseLong(data.get("price")),
         data.get("date")
     );
-
-    return added ? "Yes" : "No";
   }
   @DeleteMapping("/birds/{id}")
-  public String removebirds(@PathVariable Long id) {
-    boolean added = Birds.removeBirds(id);
-    return added ? "Yes" : "No";
+  public Map<String, Object> removebirds(@PathVariable Long id) {
+    return Birds.removeBirds(id);
   }
   //-----------DEALS--------------
   @GetMapping("/deals/{id}")
-  public String getDeals(@PathVariable Long id){
+  public Map<String, Object> getDeals(@PathVariable Long id){
     return Deals.getDeals(id);
   }
   @GetMapping("/deals")
-  public List getDeals(){
+  public Map<String, Object> getDeals(){
     return Deals.getDeals();
   }
   @PostMapping("/deals")
-  public String addDeals(@RequestBody Map<String, String> data){
-    boolean added = Deals.addDeals(
-        Long.parseLong(data.get("lot_id")),
-        Long.parseLong(data.get("bird_id")),
-        Long.parseLong(data.get("price")),
-        data.get("status")
-        );
-    return added ? "Yes" : "No";
+  public Object addDeals(@RequestBody Map<String, String> data){
+    return Deals.addDeals(Long.parseLong(data.get("lot_id")), Long.parseLong(data.get("bird_id")),
+        Long.parseLong(data.get("price")), data.get("status"));
   }
   @PatchMapping("/deals/{id}")
-  public String updateDeals(@PathVariable Long id, @RequestBody Map<String,String> data) {
-    boolean added = Deals.updateDeals(
+  public Map<String, Object> updateDeals(@PathVariable Long id, @RequestBody Map<String,String> data) {
+    return Deals.updateDeals(
         id,
         Long.parseLong(data.get("lot_id")),
         Long.parseLong(data.get("bird_id")),
         Long.parseLong(data.get("price")),
         data.get("status")
         );
-
-    return added ? "Yes" : "No";
   }
   @DeleteMapping("/deals/{id}")
-  public String removeDeals(@PathVariable Long id) {
-    boolean added = Deals.removeDeals(id);
-    return added ? "Yes" : "No";
+  public Map<String, Object> removeDeals(@PathVariable Long id) {
+    return Deals.removeDeals(id);
   }
 
 
 
   //-----------BUSINESS OPERATIONS--------------
   @PostMapping("/business/publish-item")
-  public String publishItem(@RequestBody Map<String, String> data) {
+  public Object publishItem(@RequestBody Map<String, String> data) {
     return BusinessOperations.publishItem(
         Long.parseLong(data.get("user_id")), data.get("about"), data.get("cndn"),
         Long.parseLong(data.get("starting_price")), data.get("step"), data.get("date"));
   }
 
   @PostMapping("/business/lots/{lotId}/bids")
-  public String placeBid(@PathVariable Long lotId, @RequestBody Map<String, String> data) {
+  public Object placeBid(@PathVariable Long lotId, @RequestBody Map<String, String> data) {
     return BusinessOperations.placeBid(lotId, Long.parseLong(data.get("user_id")),
         Long.parseLong(data.get("price")), data.get("date"));
   }
 
   @PostMapping("/business/lots/{lotId}/close")
-  public String closeAuction(@PathVariable Long lotId) {
+  public Object closeAuction(@PathVariable Long lotId) {
     return BusinessOperations.closeAuction(lotId);
   }
 
   @PostMapping("/business/lots/{lotId}/cancel")
-  public String cancelAuction(@PathVariable Long lotId) {
+  public Object cancelAuction(@PathVariable Long lotId) {
     return BusinessOperations.cancelAuction(lotId);
   }
 
   @DeleteMapping("/business/bids/{bidId}")
-  public String withdrawBid(@PathVariable Long bidId) {
+  public Object withdrawBid(@PathVariable Long bidId) {
     return BusinessOperations.withdrawBid(bidId);
   }
 }

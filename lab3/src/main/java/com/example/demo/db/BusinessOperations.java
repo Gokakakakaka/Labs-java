@@ -1,162 +1,289 @@
-
 package com.example.demo.db;
 
 import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 public final class BusinessOperations {
+
     private BusinessOperations() {}
 
-    private static Connection connection() throws SQLException {
-        if (Database.connection == null || Database.connection.isClosed()) Database.connect();
-        return Database.connection;
-    }
+    public static Map<String, Object> publishItem(
+            long userId, String about, String condition,
+            long startingPrice, String step, String endDate) {
 
-    public static String publishItem(long userId, String about, String condition,
-                                     long startingPrice, String step, String endDate) {
         Connection c = null;
+
         try {
-            c = connection();
+            c = Db.connection();
             c.setAutoCommit(false);
-            try (PreparedStatement owner = c.prepareStatement("SELECT id FROM users WHERE id=?")) {
-                owner.setLong(1, userId);
-                try (ResultSet rs = owner.executeQuery()) {
-                    if (!rs.next()) { c.rollback(); return "User not found"; }
-                }
+
+            if (!Users.exists(c, userId)) {
+                return fail(c, "Пользователь не найден");
             }
-            long itemId;
-            try (PreparedStatement ps = c.prepareStatement(
-                    "INSERT INTO items(user_id,about,cndn) VALUES(?,?,?)", Statement.RETURN_GENERATED_KEYS)) {
-                ps.setLong(1, userId); ps.setString(2, about); ps.setString(3, condition); ps.executeUpdate();
-                try (ResultSet keys = ps.getGeneratedKeys()) { if (!keys.next()) throw new SQLException("No item id generated"); itemId = keys.getLong(1); }
+
+            Map<String, Object> item = Item.addItem(c, userId, about, condition);
+
+            if (!ok(item)) {
+                return fail(c, (String) item.get("message"));
             }
-            long lotId;
-            try (PreparedStatement ps = c.prepareStatement(
-                    "INSERT INTO lots(item_id,pprice,start_price,step,date,status) VALUES(?,?,?,?,?, 'OPEN')", Statement.RETURN_GENERATED_KEYS)) {
-                ps.setLong(1, itemId); ps.setLong(2, startingPrice); ps.setLong(3, startingPrice); ps.setString(4, step); ps.setString(5, endDate); ps.executeUpdate();
-                try (ResultSet keys = ps.getGeneratedKeys()) { if (!keys.next()) throw new SQLException("No lot id generated"); lotId = keys.getLong(1); }
+
+            long itemId = id(item);
+
+            Map<String, Object> lot = Lots.addLot(
+                    c, itemId, startingPrice, startingPrice,
+                    step, endDate, "OPEN"
+            );
+
+            if (!ok(lot)) {
+                return fail(c, (String) lot.get("message"));
             }
+
             c.commit();
-            return "Published itemId=" + itemId + ", lotId=" + lotId;
-        } catch (SQLException e) { rollback(c); return "Publish failed: " + e.getMessage(); }
-        finally { resetAutoCommit(c); }
+
+            Map<String, Object> data = new LinkedHashMap<>();
+            data.put("item", item.get("data"));
+            data.put("lot", lot.get("data"));
+
+            return ApiResponse.success("Товар опубликован, лот создан", data);
+
+        } catch (SQLException e) {
+            rollback(c);
+            return ApiResponse.error("Ошибка публикации: " + e.getMessage());
+
+        } finally {
+            reset(c);
+        }
     }
 
-    public static String placeBid(long lotId, long userId, long price, String date) {
+    public static Map<String, Object> placeBid(
+            long lotId, long userId, long price, String date) {
+
         Connection c = null;
+
         try {
-            c = connection(); c.setAutoCommit(false);
-            long currentPrice;
-            try (PreparedStatement ps = c.prepareStatement("SELECT pprice,start_price,status FROM lots WHERE id=? FOR UPDATE")) {
-                ps.setLong(1, lotId);
-                try (ResultSet rs = ps.executeQuery()) {
-                    if (!rs.next()) { c.rollback(); return "Lot not found"; }
-                    if (!"OPEN".equalsIgnoreCase(rs.getString("status"))) { c.rollback(); return "Lot is not open"; }
-                    currentPrice = rs.getLong("pprice");
-                }
+            c = Db.connection();
+            c.setAutoCommit(false);
+
+            Map<String, Object> lot = Lots.find(c, lotId, true);
+
+            if (lot == null) {
+                return fail(c, "Лот не найден");
             }
-            try (PreparedStatement ps = c.prepareStatement("SELECT id FROM users WHERE id=?")) {
-                ps.setLong(1, userId); try (ResultSet rs = ps.executeQuery()) {
-                    if (!rs.next()) { c.rollback(); return "User not found"; }
-                }
+
+            if (!"OPEN".equalsIgnoreCase(String.valueOf(lot.get("status")))) {
+                return fail(c, "Лот не открыт");
             }
-            if (price <= currentPrice) { c.rollback(); return "Bid must exceed current price " + currentPrice; }
-            try (PreparedStatement ps = c.prepareStatement("INSERT INTO birds(lot_id,user_id,price,date) VALUES(?,?,?,?)")) {
-                ps.setLong(1, lotId); ps.setLong(2, userId); ps.setLong(3, price); ps.setString(4, date); ps.executeUpdate();
+
+            if (!Users.exists(c, userId)) {
+                return fail(c, "Пользователь не найден");
             }
-            try (PreparedStatement ps = c.prepareStatement("UPDATE lots SET pprice=? WHERE id=?")) {
-                ps.setLong(1, price); ps.setLong(2, lotId); ps.executeUpdate();
+
+            long current = ((Number) lot.get("pprice")).longValue();
+
+            if (price <= current) {
+                return fail(c, "Ставка должна превышать текущую цену " + current);
             }
-            c.commit(); return "Bid accepted; currentPrice=" + price;
-        } catch (SQLException e) { rollback(c); return "Bid failed: " + e.getMessage(); }
-        finally { resetAutoCommit(c); }
+
+            Map<String, Object> bid = Birds.addBird(c, lotId, userId, price, date);
+
+            if (!ok(bid)) {
+                return fail(c, (String) bid.get("message"));
+            }
+
+            Lots.updatePrice(c, lotId, price);
+            c.commit();
+
+            Map<String, Object> data = new LinkedHashMap<>();
+            data.put("bid", bid.get("data"));
+            data.put("current_price", price);
+
+            return ApiResponse.success("Ставка принята", data);
+
+        } catch (SQLException e) {
+            rollback(c);
+            return ApiResponse.error("Ошибка ставки: " + e.getMessage());
+
+        } finally {
+            reset(c);
+        }
     }
 
-    public static String closeAuction(long lotId) {
+    public static Map<String, Object> closeAuction(long lotId) {
+
         Connection c = null;
+
         try {
-            c = connection(); c.setAutoCommit(false);
-            try (PreparedStatement ps = c.prepareStatement("SELECT status FROM lots WHERE id=? FOR UPDATE")) {
-                ps.setLong(1, lotId); try (ResultSet rs = ps.executeQuery()) {
-                    if (!rs.next()) { c.rollback(); return "Lot not found"; }
-                    if (!"OPEN".equalsIgnoreCase(rs.getString("status"))) { c.rollback(); return "Lot is not open"; }
-                }
+            c = Db.connection();
+            c.setAutoCommit(false);
+
+            Map<String, Object> lot = Lots.find(c, lotId, true);
+
+            if (lot == null) {
+                return fail(c, "Лот не найден");
             }
-            long bidId, winnerId, price;
-            try (PreparedStatement ps = c.prepareStatement("SELECT id,user_id,price FROM birds WHERE lot_id=? ORDER BY price DESC, id ASC LIMIT 1")) {
-                ps.setLong(1, lotId); try (ResultSet rs = ps.executeQuery()) {
-                    if (!rs.next()) { c.rollback(); return "Cannot close an auction without bids"; }
-                    bidId = rs.getLong("id"); winnerId = rs.getLong("user_id"); price = rs.getLong("price");
-                }
+
+            if (!"OPEN".equalsIgnoreCase(String.valueOf(lot.get("status")))) {
+                return fail(c, "Лот не открыт");
             }
-            long dealId;
-            try (PreparedStatement ps = c.prepareStatement("INSERT INTO deals(lot_id,bird_id,price,status) VALUES(?,?,?,'COMPLETED')", Statement.RETURN_GENERATED_KEYS)) {
-                ps.setLong(1, lotId); ps.setLong(2, bidId); ps.setLong(3, price); ps.executeUpdate();
-                try (ResultSet keys = ps.getGeneratedKeys()) { if (!keys.next()) throw new SQLException("No deal id generated"); dealId = keys.getLong(1); }
+
+            Map<String, Object> bid = Birds.highestBird(c, lotId);
+
+            if (bid == null) {
+                return fail(c, "Нельзя закрыть аукцион без ставок");
             }
-            try (PreparedStatement ps = c.prepareStatement("UPDATE lots SET status='CLOSED',pprice=? WHERE id=?")) {
-                ps.setLong(1, price); ps.setLong(2, lotId); ps.executeUpdate();
+
+            long bidId = ((Number) bid.get("id")).longValue();
+            long price = ((Number) bid.get("price")).longValue();
+            long winner = ((Number) bid.get("user_id")).longValue();
+
+            Map<String, Object> deal = Deals.addDeal(
+                    c, lotId, bidId, price, "COMPLETED"
+            );
+
+            if (!ok(deal)) {
+                return fail(c, (String) deal.get("message"));
             }
-            c.commit(); return "Auction closed; dealId=" + dealId + ", winnerUserId=" + winnerId + ", price=" + price;
-        } catch (SQLException e) { rollback(c); return "Close failed: " + e.getMessage(); }
-        finally { resetAutoCommit(c); }
+
+            Lots.updateStatus(c, lotId, "CLOSED", price);
+            c.commit();
+
+            Map<String, Object> data = new LinkedHashMap<>();
+            data.put("deal", deal.get("data"));
+            data.put("winner_user_id", winner);
+            data.put("price", price);
+
+            return ApiResponse.success("Аукцион закрыт", data);
+
+        } catch (SQLException e) {
+            rollback(c);
+            return ApiResponse.error("Ошибка закрытия аукциона: " + e.getMessage());
+
+        } finally {
+            reset(c);
+        }
     }
 
-    public static String cancelAuction(long lotId) {
+    public static Map<String, Object> cancelAuction(long lotId) {
+
         Connection c = null;
+
         try {
-            c = connection(); c.setAutoCommit(false);
-            try (PreparedStatement ps = c.prepareStatement("SELECT status FROM lots WHERE id=? FOR UPDATE")) {
-                ps.setLong(1, lotId); try (ResultSet rs = ps.executeQuery()) {
-                    if (!rs.next()) { c.rollback(); return "Lot not found"; }
-                    if (!"OPEN".equalsIgnoreCase(rs.getString("status"))) { c.rollback(); return "Only open lots can be cancelled"; }
-                }
+            c = Db.connection();
+            c.setAutoCommit(false);
+
+            Map<String, Object> lot = Lots.find(c, lotId, true);
+
+            if (lot == null) {
+                return fail(c, "Лот не найден");
             }
-            try (PreparedStatement ps = c.prepareStatement("SELECT id FROM birds WHERE lot_id=? LIMIT 1")) {
-                ps.setLong(1, lotId); try (ResultSet rs = ps.executeQuery()) { if (rs.next()) { c.rollback(); return "Cannot cancel a lot with bids"; } }
+
+            if (!"OPEN".equalsIgnoreCase(String.valueOf(lot.get("status")))) {
+                return fail(c, "Отменить можно только открытый лот");
             }
-            try (PreparedStatement ps = c.prepareStatement("SELECT id FROM deals WHERE lot_id=? LIMIT 1")) {
-                ps.setLong(1, lotId); try (ResultSet rs = ps.executeQuery()) { if (rs.next()) { c.rollback(); return "Cannot cancel a lot with deals"; } }
+
+            if (Birds.hasBids(c, lotId)) {
+                return fail(c, "Нельзя отменить лот со ставками");
             }
-            try (PreparedStatement ps = c.prepareStatement("UPDATE lots SET status='CANCELLED' WHERE id=?")) {
-                ps.setLong(1, lotId); ps.executeUpdate();
+
+            if (Deals.existsForLot(c, lotId)) {
+                return fail(c, "Нельзя отменить лот со сделками");
             }
-            c.commit(); return "Auction cancelled";
-        } catch (SQLException e) { rollback(c); return "Cancel failed: " + e.getMessage(); }
-        finally { resetAutoCommit(c); }
+
+            Lots.updateStatus(c, lotId, "CANCELLED");
+            c.commit();
+
+            return ApiResponse.success(
+                    "Аукцион отменён",
+                    Map.of("lot_id", lotId, "status", "CANCELLED")
+            );
+
+        } catch (SQLException e) {
+            rollback(c);
+            return ApiResponse.error("Ошибка отмены аукциона: " + e.getMessage());
+
+        } finally {
+            reset(c);
+        }
     }
 
-    public static String withdrawBid(long bidId) {
+    public static Map<String, Object> withdrawBid(long bidId) {
+
         Connection c = null;
+
         try {
-            c = connection(); c.setAutoCommit(false);
-            long lotId;
-            try (PreparedStatement ps = c.prepareStatement("SELECT lot_id FROM birds WHERE id=? FOR UPDATE")) {
-                ps.setLong(1, bidId); try (ResultSet rs = ps.executeQuery()) {
-                    if (!rs.next()) { c.rollback(); return "Bid not found"; } lotId = rs.getLong("lot_id");
-                }
+            c = Db.connection();
+            c.setAutoCommit(false);
+
+            Map<String, Object> bid = Birds.find(c, bidId, true);
+
+            if (bid == null) {
+                return fail(c, "Ставка не найдена");
             }
-            long oldPrice;
-            try (PreparedStatement ps = c.prepareStatement("SELECT pprice,start_price,status FROM lots WHERE id=? FOR UPDATE")) {
-                ps.setLong(1, lotId); try (ResultSet rs = ps.executeQuery()) {
-                    if (!rs.next() || !"OPEN".equalsIgnoreCase(rs.getString("status"))) { c.rollback(); return "Bid can only be withdrawn from an open lot"; }
-                    oldPrice = rs.getLong("start_price");
-                }
+
+            long lotId = ((Number) bid.get("lot_id")).longValue();
+
+            Map<String, Object> lot = Lots.find(c, lotId, true);
+
+            if (lot == null ||
+                    !"OPEN".equalsIgnoreCase(String.valueOf(lot.get("status")))) {
+                return fail(c, "Ставку можно удалить только из открытого лота");
             }
-            try (PreparedStatement ps = c.prepareStatement("DELETE FROM birds WHERE id=?")) { ps.setLong(1, bidId); ps.executeUpdate(); }
-            long nextPrice;
-            try (PreparedStatement ps = c.prepareStatement("SELECT MAX(price) AS max_price FROM birds WHERE lot_id=?")) {
-                ps.setLong(1, lotId); try (ResultSet rs = ps.executeQuery()) { rs.next(); long max = rs.getLong("max_price"); nextPrice = rs.wasNull() ? oldPrice : max; }
-            }
-            try (PreparedStatement ps = c.prepareStatement("UPDATE lots SET pprice=? WHERE id=?")) { ps.setLong(1, nextPrice); ps.setLong(2, lotId); ps.executeUpdate(); }
-            c.commit(); return "Bid withdrawn; currentPrice=" + nextPrice;
-        } catch (SQLException e) { rollback(c); return "Withdraw failed: " + e.getMessage(); }
-        finally { resetAutoCommit(c); }
+
+            long start = ((Number) lot.get("start_price")).longValue();
+
+            Birds.delete(c, bidId);
+
+            long next = Birds.maxPrice(c, lotId, start);
+
+            Lots.updatePrice(c, lotId, next);
+            c.commit();
+
+            return ApiResponse.success(
+                    "Ставка отозвана",
+                    Map.of(
+                            "bid_id", bidId,
+                            "lot_id", lotId,
+                            "current_price", next
+                    )
+            );
+
+        } catch (SQLException e) {
+            rollback(c);
+            return ApiResponse.error("Ошибка отзыва ставки: " + e.getMessage());
+
+        } finally {
+            reset(c);
+        }
     }
 
-    private static void rollback(Connection c) { if (c != null) try { c.rollback(); } catch (SQLException ignored) {} }
-    private static void resetAutoCommit(Connection c) { if (c != null) try { c.setAutoCommit(true); } catch (SQLException ignored) {} }
+    private static boolean ok(Map<String, Object> r) {
+        return r != null && Boolean.TRUE.equals(r.get("success"));
+    }
+
+    private static long id(Map<String, Object> r) {
+        return ((Number) ((Map<?, ?>) r.get("data")).get("id")).longValue();
+    }
+
+    private static Map<String, Object> fail(Connection c, String message) {
+        rollback(c);
+        return ApiResponse.error(message);
+    }
+
+    private static void rollback(Connection c) {
+        if (c != null) {
+            try {
+                c.rollback();
+            } catch (SQLException ignored) {}
+        }
+    }
+
+    private static void reset(Connection c) {
+        if (c != null) {
+            try {
+                c.setAutoCommit(true);
+            } catch (SQLException ignored) {}
+        }
+    }
 }

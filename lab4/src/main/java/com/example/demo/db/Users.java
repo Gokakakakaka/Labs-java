@@ -1,217 +1,270 @@
 package com.example.demo.db;
 
-import com.example.demo.db.Database;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.util.Properties;
-import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.List;
-import java.sql.ResultSet;
-import org.springframework.dao.DuplicateKeyException;
-import org.springframework.http.HttpStatus;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
-import java.util.regex.Pattern;
 
+import java.sql.*;
+import java.util.*;
+import java.util.regex.Pattern;
 
 @Service
 public class Users {
-    
-    private final Pattern EMAIL = Pattern.compile("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$");
-    private final JdbcTemplate jdbc;
-    private final PasswordEncoder encoder;
-    public Users(JdbcTemplate jdbc, PasswordEncoder encoder) { this.jdbc = jdbc; this.encoder = encoder; }
 
-    public boolean addUser(String name, String email, String password) {
-        if (name == null || name.isBlank() || name.length() > 100){ System.out.println("Name error");return false;}
-        if (email == null || !EMAIL.matcher(email).matches() || email.length() > 190) {System.out.println("Email error");return false;}
-        if (password == null || password.length() < 8 || password.length() > 72
-                || !password.matches(".*[A-Z].*") || !password.matches(".*[a-z].*")
-                || !password.matches(".*[0-9].*") || !password.matches(".*[^A-Za-z0-9].*")) {System.out.println("Pass error min 8 dig");return false;}
+    private static final Pattern EMAIL =
+            Pattern.compile("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$");
+
+    private static final PasswordEncoder encoder =
+            new BCryptPasswordEncoder();
+
+    static boolean checkCredentials(String name, String email, String password) {
+
+        if (name == null || name.isBlank() || name.length() > 100) {
+            return false;
+        }
+
+        if (email == null || !EMAIL.matcher(email).matches()
+                || email.length() > 190) {
+            return false;
+        }
+
+        if (password == null || password.length() < 8
+                || password.length() > 72
+                || !password.matches(".*[A-Z].*")
+                || !password.matches(".*[a-z].*")
+                || !password.matches(".*[0-9].*")
+                || !password.matches(".*[^A-Za-z0-9].*")) {
+            return false;
+        }
+
+        return true;
+    }
+
+    public static Map<String, Object> addUser(
+            String name, String email, String password) {
+
         try {
-            jdbc.update("INSERT INTO users(name,email,password_hash,role,enabled,account_non_locked) VALUES(?,?,?,?,?,?)",
-                name.trim(), email.trim().toLowerCase(), encoder.encode(password), "USER", true, true);
-            return true;
-        } catch (DuplicateKeyException e) {
-            System.out.println("Error");
-            return false;
+            return addUser(Db.connection(), name, email, password);
+        } catch (SQLException e) {
+            return ApiResponse.error(
+                    "Ошибка добавления пользователя: " + e.getMessage()
+            );
         }
     }
 
+    static Map<String, Object> addUser(
+            Connection c, String name, String email, String password)
+            throws SQLException {
 
-public boolean updateUser(Long id, String username, String email, String password) {
-    if (id == null) {
-        return false;
-    }
-
-    String selectSql = "SELECT name, email, password_hash FROM users WHERE id = ?";
-    String updateSql = "UPDATE users SET name = ?, email = ?, password_hash = ? WHERE id = ?";
-
-    try {
-        if (Database.connection == null || Database.connection.isClosed()) {
-            return false;
+        if (!checkCredentials(name, email, password)) {
+            return ApiResponse.error("Ошибка ввода данных");
         }
 
-        String finalUsername = username;
-        String finalEmail = email;
-        String finalPassword = password;
+        String sql = """
+                INSERT INTO users
+                (name, email, password_hash, role, enabled, account_non_locked)
+                VALUES (?, ?, ?, ?, ?, ?)
+                """;
 
-        try (PreparedStatement statement = Database.connection.prepareStatement(selectSql)) {
-            statement.setLong(1, id);
-            try (ResultSet result = statement.executeQuery()) {
-                if (!result.next()) {
-                    System.out.println("User not found");
-                    return false;
+        try (PreparedStatement ps =
+                     c.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+
+            ps.setString(1, name.trim());
+            ps.setString(2, email.trim().toLowerCase());
+            ps.setString(3, encoder.encode(password));
+            ps.setString(4, "USER");
+            ps.setBoolean(5, true);
+            ps.setBoolean(6, true);
+
+            ps.executeUpdate();
+
+            try (ResultSet keys = ps.getGeneratedKeys()) {
+
+                if (keys.next()) {
+                    Map<String, Object> data = new LinkedHashMap<>();
+                    data.put("name", name);
+                    data.put("email", email);
+
+                    return ApiResponse.created(
+                            "Пользователь",
+                            keys.getLong(1),
+                            data
+                    );
                 }
-                if (username == null) finalUsername = result.getString("name");
-                if (email == null) finalEmail = result.getString("email");
-                if (password == null) finalPassword = result.getString("password_hash");
             }
         }
 
-        if (finalUsername == null || finalUsername.isBlank() || finalUsername.length() > 100) {
-            System.out.println("Name error");
-            return false;
-        }
-        if (finalEmail == null || !EMAIL.matcher(finalEmail).matches() || finalEmail.length() > 190) {
-            System.out.println("Email error");
-            return false;
-        }
-        
-        if (password != null) {
-            if (password.length() < 8 || password.length() > 72
-                    || !password.matches(".*[A-Z].*") || !password.matches(".*[a-z].*")
-                    || !password.matches(".*[0-9].*") || !password.matches(".*[^A-Za-z0-9].*")) {
-                System.out.println("Pass error min 8 dig");
-                return false;
-            }
-            finalPassword = encoder.encode(password);
-        }
-
-        try (PreparedStatement updateStatement = Database.connection.prepareStatement(updateSql)) {
-            updateStatement.setString(1, finalUsername.trim());
-            updateStatement.setString(2, finalEmail.trim().toLowerCase());
-            updateStatement.setString(3, finalPassword);
-            updateStatement.setLong(4, id);
-
-            int rowsUpdated = updateStatement.executeUpdate();
-            return rowsUpdated > 0;
-        }
-
-    } catch (Exception e) {
-        System.out.println("Error: " + e.getMessage());
-        return false;
+        return ApiResponse.error("Не удалось получить ID пользователя");
     }
-}
 
-  public String getUser(Long id) {
-    String sql = 
-      "SELECT * FROM users WHERE id = ?";
+    public static boolean exists(Connection c, long id)
+            throws SQLException {
 
-      try {
-        if (Database.connection == null ||
-                Database.connection.isClosed()) {
-            return null;
+        try (PreparedStatement ps =
+                     c.prepareStatement("SELECT 1 FROM users WHERE id=?")) {
+
+            ps.setLong(1, id);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next();
+            }
+        }
+    }
+
+    public static Map<String, Object> updateUser(
+            Long id,
+            String name,
+            String email,
+            String password,
+            String role,
+            boolean enabled,
+            boolean anl) {
+
+        if (id == null) {
+            return ApiResponse.error("ID пользователя не может быть пустым");
         }
 
-        try (PreparedStatement statement =
-                 Database.connection.prepareStatement(sql)) {
+        if (!checkCredentials(name, email, password)) {
+            return ApiResponse.error("Ошибка ввода данных");
+        }
 
-            statement.setLong(1, id);
+        String sql = """
+                UPDATE users
+                SET name = ?,
+                    email = ?,
+                    password_hash = ?,
+                    role = ?,
+                    enabled = ?,
+                    account_non_locked = ?
+                WHERE id = ?
+                """;
 
-            try (ResultSet result = statement.executeQuery()) {
-                if (result.next()) {
-                    long userId = result.getLong("id");
-                      String name = result.getString("name");
-                    String email = result.getString("email");
+        try (Connection c = Db.connection();
+             PreparedStatement ps = c.prepareStatement(sql)) {
 
-                    return String.format(
-                        "{\"id\":%d,\"name\":\"%s\",\"email\":\"%s\"}",
-                        userId, name, email
+            ps.setString(1, name.trim());
+            ps.setString(2, email.trim().toLowerCase());
+            ps.setString(3, encoder.encode(password));
+            ps.setString(4, role);
+            ps.setBoolean(5, enabled);
+            ps.setBoolean(6, anl);
+            ps.setLong(7, id);
+
+            int affectedRows = ps.executeUpdate();
+
+            if (affectedRows == 0) {
+                return ApiResponse.error(
+                        "Пользователь с ID " + id + " не найден"
+                );
+            }
+
+            Map<String, Object> data = new LinkedHashMap<>();
+
+            data.put("id", id);
+            data.put("name", name);
+            data.put("email", email);
+            data.put("role", role);
+            data.put("enabled", enabled);
+            data.put("account_non_locked", anl);
+
+            return ApiResponse.success(
+                    "Пользователь успешно обновлен", data
+            );
+
+        } catch (SQLException e) {
+            return ApiResponse.error(
+                    "Ошибка обновления пользователя: " + e.getMessage()
+            );
+        }
+    }
+
+    public static Map<String, Object> getUser(Long id) {
+
+        try (Connection c = Db.connection();
+             PreparedStatement ps =
+                     c.prepareStatement(
+                             "SELECT id, name, email FROM users WHERE id=?")) {
+
+            ps.setLong(1, id);
+
+            try (ResultSet r = ps.executeQuery()) {
+
+                if (r.next()) {
+                    Map<String, Object> data = new LinkedHashMap<>();
+
+                    data.put("id", r.getLong("id"));
+                    data.put("name", r.getString("name"));
+                    data.put("email", r.getString("email"));
+
+                    return ApiResponse.success(
+                            "Пользователь получен", data
                     );
                 }
 
-                return null;
+                return ApiResponse.error("Пользователя не существует");
             }
+
+        } catch (SQLException e) {
+            return ApiResponse.error(
+                    "Ошибка получения данных пользователя: " + e.getMessage()
+            );
         }
+    }
 
-      } catch (SQLException e) {
-        System.err.println(
-            "Error getting user: " + e.getMessage());
-        return null;
-      }
-  }
+    public static Map<String, Object> getUser() {
 
-  public List getUser() {
+        List<Map<String, Object>> out = new ArrayList<>();
 
-    List<String> users = new ArrayList<>();
-    String sql = 
-      "SELECT * FROM users";
+        try (Connection c = Db.connection();
+             Statement s = c.createStatement();
+             ResultSet r = s.executeQuery(
+                     "SELECT id, name, email FROM users")) {
 
-      try {
-        if (Database.connection == null ||
-                Database.connection.isClosed()) {
-            return null;
-        }
+            while (r.next()) {
 
-        try (PreparedStatement statement =
-                 Database.connection.prepareStatement(sql)) {
+                Map<String, Object> user = new LinkedHashMap<>();
 
+                user.put("id", r.getLong("id"));
+                user.put("name", r.getString("name"));
+                user.put("email", r.getString("email"));
 
-            try (ResultSet result = statement.executeQuery()) {
-                while (result.next()) {
-                    long userId = result.getLong("id");
-                      String name = result.getString("name");
-                    String email = result.getString("email");
-
-                    String user = String.format(
-                        "{\"id\":%d,\"name\":\"%s\",\"email\":\"%s\"}",
-                        userId, name, email
-                    );
-                    
-                    users.add(user);
-
-                }
-
-                return users;
+                out.add(user);
             }
+
+        } catch (SQLException e) {
+            return ApiResponse.error(
+                    "Ошибка получения данных пользователей: " + e.getMessage()
+            );
         }
 
-      } catch (SQLException e) {
-        System.err.println(
-          "Error getting user: " + e.getMessage());
-        return null;
-      }
-  }
+        return ApiResponse.success(
+                "Данные пользователей получены", out
+        );
+    }
 
-  public boolean removeUser(Long id){ 
-    String sql = 
-      "DELETE FROM users WHERE id = ?";
+    public static Map<String, Object> removeUser(Long id) {
 
-      try {
-        if (Database.connection == null ||
-                Database.connection.isClosed()) {
-            return false;
+        try (Connection c = Db.connection();
+             PreparedStatement ps =
+                     c.prepareStatement("DELETE FROM users WHERE id=?")) {
+
+            ps.setLong(1, id);
+
+            boolean res = ps.executeUpdate() > 0;
+
+            if (res) {
+                return ApiResponse.success(
+                        "Пользователь удален", id + " Deleted"
+                );
+            }
+
+            return ApiResponse.error("Невозможно удалить пользователя");
+
+        } catch (SQLException e) {
+            return ApiResponse.error(
+                    "Ошибка удаления пользователя: " + e.getMessage()
+            );
         }
-
-        try (PreparedStatement statement =
-                 Database.connection.prepareStatement(sql)) {
-
-            statement.setLong(1, id);
-            return statement.executeUpdate() > 0;
-        }
-
-      } catch (SQLException e) {
-        System.err.println(
-            "Error getting user: " + e.getMessage());
-        return false;
-      }
-
-  }
+    }
 }
 
