@@ -3,9 +3,9 @@ spring:
     name: 1БАС24022
 
   datasource:
-    url: jdbc:mysql://localhost:3306/java_app?useSSL=false&serverTimezone=UTC&characterEncoding=UTF-8
-    username: admin
-    password: 12345
+    url: ${DB_URL}
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
     driver-class-name: com.mysql.cj.jdbc.Driver
     hikari:
       maximum-pool-size: 10
