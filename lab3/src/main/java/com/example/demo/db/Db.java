@@ -20,9 +20,9 @@ public final class Db {
     public static Connection con;
     public static void connect() throws SQLException {
         if (con == null || con.isClosed()) {
-            String url = "jdbc:mysql://localhost:3306/java_app";
-            String user = "admin";
-            String password = "12345";
+            String url = System.getenv("DB_URL");
+            String user = System.getenv("DB_USER");
+            String password = System.getenv("DB_PASSWORD");
 
             con = DriverManager.getConnection(
                 url, user, password
